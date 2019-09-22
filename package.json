@@ -6,7 +6,9 @@
 	"description": "An infinite flat world to wander with your friends.",
 	"devDependencies": {
 		"@architect/architect": "^6.0.10",
+		"husky": "^3.0.5",
 		"lighthouse-ci": "^1.10.0",
+		"prettier": "^1.18.2",
 		"start-server-and-test": "^1.10.2"
 	},
 	"homepage": "https://github.com/jessehattabaugh/splay.land#readme",
@@ -18,7 +20,7 @@
 		"url": "git+https://github.com/jessehattabaugh/splay.land.git"
 	},
 	"scripts": {
-		"lighthouse": "lighthouse-ci http://localhost:3333 --score=40",
+		"lighthouse": "lighthouse-ci http://localhost:3333 --score=30",
 		"start": "arc sandbox",
 		"test": "start-test start http-get://localhost:3333 lighthouse"
 	},
