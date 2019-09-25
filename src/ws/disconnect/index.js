@@ -1,5 +1,7 @@
-// learn more about WebSocket functions here: https://arc.codes/primitives/ws
-exports.handler = async function subscribe(payload) {
-	console.log('🎃', JSON.stringify(payload, null, 2));
+exports.handler = async function handleWebSocketDisconnect(event) {
+	console.log('🎃', 'disconnect', event);
+
+	// remove the player from the player table
+
 	return {statusCode: 200};
 };
