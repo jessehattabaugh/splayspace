@@ -21,7 +21,7 @@ function message(event) {
 document.getElementById('input').addEventListener('keyup', (event) => {
 	console.debug('🔑', 'keyup', event);
 	if (event.key == 'Enter') {
-		console.debug('👩‍🎤')
+		console.debug('👩‍🎤');
 		const text = event.target.value;
 		ws.send(JSON.stringify({text}));
 		event.target.value = '';
