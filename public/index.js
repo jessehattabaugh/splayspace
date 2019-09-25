@@ -1,17 +1,17 @@
 const ws = new WebSocket('ws://localhost:3333');
 ws.onopen = () => {
-	console.debug('ws opened');
+	console.debug('🐣', 'opened');
 };
 ws.onclose = close;
 ws.onmessage = message;
 ws.onerror = console.log;
 
 function open() {
-	console.debug('❤', 'opened');
+	console.debug('🏹', 'opened');
 }
 
 function close() {
-	console.debug('💔', 'close');
+	console.debug('🎯', 'close');
 }
 
 function message(event) {

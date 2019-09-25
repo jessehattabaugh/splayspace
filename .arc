@@ -11,9 +11,8 @@ players
 
 messages
   playerId *String
-  messageId **Number
-  stream true
-
+  messageId **String
+#  stream true
 
 # Uncomment the following lines to deploy
 # 'bucket' must be in the same region as 'region' (e.g. us-west-1)
