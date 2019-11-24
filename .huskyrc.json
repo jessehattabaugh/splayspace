@@ -1,6 +1,6 @@
 {
 	"hooks": {
-		"pre-commit": "prettier --write **/*.{css,html,js,json,md,webmanifest} --ignore-path .gitignore",
+		"pre-commit": "npm run format",
 		"pre-push": "npm test"
 	}
 }

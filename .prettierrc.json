@@ -1,12 +1,5 @@
 {
 	"arrowParens": "always",
-	"bracketSpacing": false,
-	"endOfLine": "lf",
-	"htmlWhitespaceSensitivity": "ignore",
-	"printWidth": 80,
-	"proseWrap": "always",
-	"semi": true,
 	"singleQuote": true,
-	"tabWidth": 4,
 	"trailingComma": "all"
 }

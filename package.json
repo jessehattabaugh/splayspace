@@ -20,6 +20,7 @@
 		"url": "git+https://github.com/jessehattabaugh/splay.land.git"
 	},
 	"scripts": {
+		"format": "prettier --write **/*.{css,html,js,json,md,webmanifest} --ignore-path .gitignore",
 		"lighthouse": "lighthouse-ci http://localhost:3333 --score=30",
 		"start": "arc sandbox",
 		"test": "start-test start http-get://localhost:3333 lighthouse"
