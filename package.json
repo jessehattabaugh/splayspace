@@ -5,11 +5,11 @@
 	},
 	"description": "An infinite flat world to wander with your friends.",
 	"devDependencies": {
-		"@architect/architect": "^6.0.10",
-		"husky": "^3.0.5",
+		"@architect/architect": "^6.0.23",
+		"husky": "^3.1.0",
 		"lighthouse-ci": "^1.10.0",
-		"prettier": "^1.18.2",
-		"start-server-and-test": "^1.10.2"
+		"prettier": "^1.19.1",
+		"start-server-and-test": "^1.10.6"
 	},
 	"homepage": "https://github.com/jessehattabaugh/splay.land#readme",
 	"license": "UNLICENSED",
