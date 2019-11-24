@@ -1,4 +1,4 @@
-# splay.land
+# SplaySpace
 
 An infinite flat world to wander with your friends.
 
