@@ -1,0 +1,14 @@
+<h1>hello world</h1>
+<script>
+	const WS_URL = process.env.WS_URL;
+	console.log(WS_URL);
+
+	const ws = new WebSocket(WS_URL);
+
+	ws.onopen = () => console.info('open');
+	ws.onclose = () => console.info('close');
+	ws.onmessage = () => console.log('message');
+	ws.onerror = () => console.error('error');
+
+	console.log('hi world!');
+</script>

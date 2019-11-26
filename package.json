@@ -1,29 +1,41 @@
 {
 	"author": "Jesse Hattabaugh <webmaster@jessehattabaugh.com> (jessehattabaugh.com)",
 	"bugs": {
-		"url": "https://github.com/jessehattabaugh/splay.land/issues"
+		"url": "https://github.com/jessehattabaugh/splayspace/issues"
 	},
 	"description": "An infinite flat world to wander with your friends.",
 	"devDependencies": {
 		"@architect/architect": "^6.0.23",
+		"chokidar-cli": "^2.1.0",
+		"concurrently": "^5.0.0",
+		"cross-env": "^6.0.3",
 		"husky": "^3.1.0",
 		"lighthouse-ci": "^1.10.0",
+		"loose-envify": "^1.4.0",
 		"prettier": "^1.19.1",
 		"start-server-and-test": "^1.10.6"
 	},
-	"homepage": "https://github.com/jessehattabaugh/splay.land#readme",
+	"homepage": "https://github.com/jessehattabaugh/splayspace#readme",
 	"license": "UNLICENSED",
 	"main": "index.js",
-	"name": "splay.land",
+	"name": "splayspace",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/jessehattabaugh/splay.land.git"
+		"url": "git+https://github.com/jessehattabaugh/splayspace.git"
 	},
 	"scripts": {
+		"arc": "arc",
+		"build": "loose-envify ./src/index.html > ./public/index.html",
+		"build:dev": "cross-env WS_URL=ws://localhost:3333 npm run build",
+		"build:prod": "cross-env WS_URL=produrl npm run build",
+		"build:stage": "cross-env WS_URL=stageurl npm run build",
 		"format": "prettier --write **/*.{css,html,js,json,md,webmanifest} --ignore-path .gitignore",
 		"lighthouse": "lighthouse-ci http://localhost:3333 --score=30",
-		"start": "arc sandbox",
-		"test": "start-test start http-get://localhost:3333 lighthouse"
+		"prod": "npm run build:prod && arc deploy production",
+		"stage": "npm run build:stage && arc deploy",
+		"start": "concurrently \"npm run watch\" \"arc sandbox\"",
+		"test": "start-test start http-get://localhost:3333 lighthouse",
+		"watch": "chokidar \"./src/index.html\" --command \"npm run build:dev\""
 	},
 	"version": "0.0.0"
 }

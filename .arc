@@ -1,10 +1,11 @@
 @app
-splay.land
+splayspace
+
+@aws
+profile splayspace
+region us-west-2
+bucket splayspace
 
 @static
 
-# Uncomment the following lines to deploy
-# 'bucket' must be in the same region as 'region' (e.g. us-west-1)
-# @aws
-# region us-west-1
-# bucket your-private-deploy-bucket
+@ws
