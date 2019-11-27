@@ -39,7 +39,7 @@
 		"prod": "npm run build:prod && arc deploy production",
 		"stage": "npm run build:stage && arc deploy",
 		"start": "npm run dev",
-		"stop": "kill-port 3333",
+		"stop": "kill-port 3333 && npm run clean",
 		"test": "start-test start http-get://localhost:3333 lighthouse",
 		"watch": "chokidar \"./src/index.html\" --command \"npm run build:dev\""
 	},

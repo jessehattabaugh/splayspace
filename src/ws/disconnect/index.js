@@ -3,9 +3,29 @@ const arc = require('@architect/functions');
 exports.handler = disconnectHandler;
 
 async function disconnectHandler(req) {
-	const id = req.requestContext.connectionId;
-	const { connections } = await arc.tables();
-	await connections.delete({ connectionId: id });
-	console.log('disconnected', id);
-	return { statusCode: 200 };
+	const { connectionId } = req.requestContext;
+	//console.log('disconnecting', connectionId);
+
+	try {
+		const { connections } = await arc.tables();
+
+		// remove the connection from the db
+		await connections.delete({ connectionId });
+
+		// announce the departure to all players
+		const { Items } = await connections.scan({});
+		//console.log('Items', JSON.stringify(Items));
+		const payload = { connectionId, action: 'departure' };
+		Items.forEach(async (connection) => {
+			const { connectionId: id } = connection;
+			//console.log('announcing departure to', id);
+			await arc.ws.send({ id, payload });
+			//console.log('announced departure to', id);
+		});
+
+		//console.log('disconnected', connectionId);
+		return { statusCode: 200, Items };
+	} catch (error) {
+		console.error(error);
+	}
 }
