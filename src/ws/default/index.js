@@ -1,5 +1,6 @@
-// learn more about WebSocket functions here: https://arc.codes/primitives/ws
-exports.handler = async function ws(req) {
-	console.log('default message', JSON.stringify(req, null, 2));
+exports.handler = defaultHandler;
+
+async function defaultHandler(req) {
+	console.info('default message', req);
 	return { statusCode: 200 };
-};
+}

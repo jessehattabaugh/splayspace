@@ -1,5 +1,11 @@
-// learn more about WebSocket functions here: https://arc.codes/primitives/ws
-exports.handler = async function ws(req) {
-	console.log('disconnected', JSON.stringify(req, null, 2));
+const arc = require('@architect/functions');
+
+exports.handler = disconnectHandler;
+
+async function disconnectHandler(req) {
+	const id = req.requestContext.connectionId;
+	const { connections } = await arc.tables();
+	await connections.delete({ connectionId: id });
+	console.log('disconnected', id);
 	return { statusCode: 200 };
-};
+}
