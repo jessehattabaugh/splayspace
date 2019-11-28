@@ -1,0 +1,6 @@
+{
+	"dependencies": {
+		"@architect/functions": "latest"
+	},
+	"name": "get-index"
+}

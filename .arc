@@ -12,7 +12,7 @@ runtime nodejs12.x
 @ws
 
 @http
-get /index.html
+get /
 
 @tables
 connections

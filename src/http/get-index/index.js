@@ -1,5 +1,8 @@
-const pathPrefix =
-	process.env.NODE_ENV === 'testing' ? '' : process.env.NODE_ENV + '/';
+const arc = require('@architect/functions');
+const { static } = arc.http.helpers;
+
+//const pathPrefix =
+//process.env.NODE_ENV === 'testing' ? '' : process.env.NODE_ENV + '/';
 
 exports.handler = rootHandler;
 
@@ -13,10 +16,14 @@ async function rootHandler(req) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SplaySpace</title>
-  <link rel="stylesheet" href="${pathPrefix}index.css">
-  <link rel="icon" href="${pathPrefix}favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="${static('/index.css')}">
+  <link rel="icon" href="${static('/favicon.ico')}" type="image/x-icon">
   <script>
-		WS_URL = "wss://${process.env.ARC_WSS_URL || 'localhost:3333'}";
+		WS_URL = "${
+			process.env.ARC_WSS_URL
+				? 'wss://' + process.env.ARC_WSS_URL
+				: 'ws://localhost:3333'
+		}";
   </script>
 </head>
 <body>
@@ -35,7 +42,7 @@ async function rootHandler(req) {
 			<input type="submit">
 		</form>
 	</section>
-	<script src="${pathPrefix}index.js"></script>
+	<script src="${static('/index.js')}"></script>
 </body>
 </html>
 `,
