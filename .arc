@@ -11,6 +11,9 @@ runtime nodejs12.x
 
 @ws
 
+@http
+get /env
+
 @tables
 connections
     connectionId *String

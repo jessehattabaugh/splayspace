@@ -24,7 +24,7 @@ async function disconnectHandler(req) {
 		});
 
 		//console.log('disconnected', connectionId);
-		return { statusCode: 200, Items };
+		return { statusCode: 200 };
 	} catch (error) {
 		console.error(error);
 	}

@@ -6,16 +6,10 @@
 	"description": "An infinite flat world to wander with your friends.",
 	"devDependencies": {
 		"@architect/architect": "^6.0.23",
-		"chokidar-cli": "^2.1.0",
-		"concurrently": "^5.0.0",
-		"cross-env": "^6.0.3",
 		"husky": "^3.1.0",
 		"kill-port": "^1.6.0",
 		"lighthouse-ci": "^1.10.0",
-		"loose-envify": "^1.4.0",
-		"mkdirp": "^0.5.1",
 		"prettier": "^1.19.1",
-		"rimraf": "^3.0.0",
 		"start-server-and-test": "^1.10.6"
 	},
 	"homepage": "https://github.com/jessehattabaugh/splayspace#readme",
@@ -28,20 +22,14 @@
 	},
 	"scripts": {
 		"arc": "arc",
-		"build": "loose-envify ./src/index.html > ./public/index.html",
-		"build:dev": "cross-env WS_URL=ws://localhost:3333 npm run build",
-		"build:prod": "cross-env WS_URL=produrl npm run build",
-		"build:stage": "cross-env WS_URL=stageurl npm run build",
-		"clean": "rimraf public && mkdirp public",
-		"dev": "npm run clean && npm run build:dev && concurrently \"npm run watch\" \"arc sandbox\"",
+		"dev": "arc sandbox",
 		"format": "prettier --write **/*.{css,html,js,json,md,webmanifest} --ignore-path .gitignore",
 		"lighthouse": "lighthouse-ci http://localhost:3333 --score=30",
-		"prod": "npm run build:prod && arc deploy production",
-		"stage": "npm run build:stage && arc deploy",
+		"prod": "arc deploy production",
+		"stage": "arc deploy",
 		"start": "npm run dev",
-		"stop": "kill-port 3333 && npm run clean",
-		"test": "start-test start http-get://localhost:3333 lighthouse",
-		"watch": "chokidar \"./src/index.html\" --command \"npm run build:dev\""
+		"stop": "kill-port 3333",
+		"test": "start-test start http-get://localhost:3333 lighthouse"
 	},
 	"version": "0.0.0"
 }

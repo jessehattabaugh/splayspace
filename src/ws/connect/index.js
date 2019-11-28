@@ -35,7 +35,7 @@ async function connectHandler(req) {
 		await connections.put({ connectionId });
 
 		//console.log('connected', connectionId);
-		return { statusCode: 200, Items };
+		return { statusCode: 200 };
 	} catch (error) {
 		console.error(error);
 	}
