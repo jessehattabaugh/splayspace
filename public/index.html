@@ -13,10 +13,10 @@
 		<input type="submit" />
 	</form>
 </section>
-<script src="/env"></script>
+<script src="env.js"></script>
 <script>
-	console.info('connecting to', ARC_WS_URL);
-	const ws = new WebSocket(ARC_WS_URL);
+	console.info('connecting to', WS_URL);
+	const ws = new WebSocket(WS_URL);
 
 	ws.onerror = (event) => console.error('ws error', event);
 	ws.onopen = (event) => console.info('ws open', event);

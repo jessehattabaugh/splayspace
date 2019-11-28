@@ -12,7 +12,7 @@ runtime nodejs12.x
 @ws
 
 @http
-get /env
+get /env.js
 
 @tables
 connections
