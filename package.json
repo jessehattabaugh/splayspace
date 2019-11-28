@@ -5,7 +5,7 @@
 	},
 	"description": "An infinite flat world to wander with your friends.",
 	"devDependencies": {
-		"@architect/architect": "^6.0.23",
+		"@architect/architect": "latest",
 		"husky": "^3.1.0",
 		"kill-port": "^1.6.0",
 		"lighthouse-ci": "^1.10.0",
@@ -22,14 +22,15 @@
 	},
 	"scripts": {
 		"arc": "arc",
-		"dev": "arc sandbox",
+		"dev": "npm run hydrate && arc sandbox",
 		"format": "prettier --write **/*.{css,html,js,json,md,webmanifest} --ignore-path .gitignore",
 		"lighthouse": "lighthouse-ci http://localhost:3333 --score=30",
 		"prod": "arc deploy production",
 		"stage": "arc deploy",
 		"start": "npm run dev",
 		"stop": "kill-port 3333",
-		"test": "start-test start http-get://localhost:3333 lighthouse"
+		"test": "start-test start http-get://localhost:3333 lighthouse",
+		"hydrate": "npx arc hydrate"
 	},
 	"version": "0.0.0"
 }
