@@ -1,10 +1,12 @@
 const arc = require('@architect/functions');
-const { static } = arc.http.helpers;
-
-//const pathPrefix =
-//process.env.NODE_ENV === 'testing' ? '' : process.env.NODE_ENV + '/';
 
 exports.handler = rootHandler;
+
+function static(path) {
+	const prefix =
+		process.env.NODE_ENV === 'testing' ? '' : '/' + process.env.NODE_ENV;
+	return prefix + arc.http.helpers.static(path);
+}
 
 async function rootHandler(req) {
 	return {
