@@ -2,13 +2,17 @@ const arc = require('@architect/functions');
 
 exports.handler = rootHandler;
 
+const { NODE_ENV, ARC_WSS_URL } = process.env;
+
+const isAWS = NODE_ENV !== 'testing';
+
 function static(path) {
-	const prefix =
-		process.env.NODE_ENV === 'testing' ? '' : '/' + process.env.NODE_ENV;
-	return prefix + arc.http.helpers.static(path);
+	const prefix = isAWS ? '/' + NODE_ENV : '';
+	return prefix + arc.static(path);
 }
 
-async function rootHandler(req) {
+async function rootHandler(request) {
+	console.info('rootHandler', request.path);
 	return {
 		headers: { 'content-type': 'text/html; charset=utf8' },
 		body: `
@@ -21,10 +25,11 @@ async function rootHandler(req) {
   <link rel="stylesheet" href="${static('/index.css')}">
   <link rel="icon" href="${static('/favicon.ico')}" type="image/x-icon">
   <script>
-		WS_URL = "${
-			process.env.ARC_WSS_URL
-				? 'wss://' + process.env.ARC_WSS_URL
-				: 'ws://localhost:3333'
+		// NODE_ENV = ${NODE_ENV}
+		// ARC_WSS_URL = ${ARC_WSS_URL}
+		WS_URL = "${isAWS ? 'wss://' + ARC_WSS_URL : 'ws://localhost:3333'}${
+			// isAWS ? '/' + NODE_ENV :
+			''
 		}";
   </script>
 </head>
