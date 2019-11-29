@@ -10,6 +10,7 @@ runtime nodejs12.x
 @static
 
 @ws
+say
 
 @http
 get /

@@ -1,0 +1,6 @@
+{
+	"dependencies": {
+		"@architect/functions": "^3.4.11"
+	},
+	"name": "ws-connect"
+}

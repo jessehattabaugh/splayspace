@@ -6,10 +6,7 @@ const { NODE_ENV, ARC_WSS_URL } = process.env;
 
 const isAWS = NODE_ENV !== 'testing';
 
-function static(path) {
-	const prefix = isAWS ? '/' + NODE_ENV : '';
-	return prefix + arc.static(path);
-}
+const static = (path) => arc.static(path, {stagePath: true});
 
 async function rootHandler(request) {
 	console.info('rootHandler', request.path);
@@ -28,8 +25,7 @@ async function rootHandler(request) {
 		// NODE_ENV = ${NODE_ENV}
 		// ARC_WSS_URL = ${ARC_WSS_URL}
 		WS_URL = "${isAWS ? 'wss://' + ARC_WSS_URL : 'ws://localhost:3333'}${
-			// isAWS ? '/' + NODE_ENV :
-			''
+			isAWS ? '/' + NODE_ENV : ''
 		}";
   </script>
 </head>

@@ -4,7 +4,7 @@ exports.handler = disconnectHandler;
 
 async function disconnectHandler(req) {
 	const { connectionId } = req.requestContext;
-	//console.log('disconnecting', connectionId);
+	console.log('disconnecting', connectionId);
 
 	try {
 		const { connections } = await arc.tables();
@@ -18,12 +18,11 @@ async function disconnectHandler(req) {
 		const payload = { connectionId, action: 'departure' };
 		Items.forEach(async (connection) => {
 			const { connectionId: id } = connection;
-			//console.log('announcing departure to', id);
 			await arc.ws.send({ id, payload });
-			//console.log('announced departure to', id);
+			console.log('announced departure to', id);
 		});
 
-		//console.log('disconnected', connectionId);
+		console.log('disconnected', connectionId);
 		return { statusCode: 200 };
 	} catch (error) {
 		console.error(error);

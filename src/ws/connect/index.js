@@ -4,7 +4,7 @@ exports.handler = connectHandler;
 
 async function connectHandler(req) {
 	const { connectionId } = req.requestContext;
-	//console.log('connecting', connectionId);
+	console.log('connecting', connectionId);
 
 	try {
 		const { connections } = await arc.tables();
@@ -14,12 +14,11 @@ async function connectHandler(req) {
 		//console.log('Items', JSON.stringify(Items));
 		Items.forEach(async (connection) => {
 			const { connectionId: id } = connection;
-			//console.log('announcing arrival to', id);
 			await arc.ws.send({
 				id,
 				payload: { connectionId, action: 'arrival' },
 			});
-			//console.log('announced arrival to', id);
+			console.log('announced arrival to', id);
 
 			// announce the presence of this player to the new player
 			await arc.ws.send({
