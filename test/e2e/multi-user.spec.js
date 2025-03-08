@@ -84,6 +84,77 @@ test.describe('Multi-user interaction', () => {
     // User A should see the reply
     await worldA.waitForChatMessage(replyMessage);
   });
+  
+  test('Users can interact with resources and see changes', async () => {
+    // Navigate both users to the application if not already there
+    if (userA.page.url() !== '/') await userA.page.goto('/');
+    if (userB.page.url() !== '/') await userB.page.goto('/');
+    
+    // Wait for both games to load if needed
+    if (!await worldA.isGameLoaded()) await worldA.waitForGameLoad();
+    if (!await worldB.isGameLoaded()) await worldB.waitForGameLoad();
+    
+    // Move users close to each other
+    await worldB.moveTowardsOtherPlayer();
+    
+    // User A collects a resource
+    const initialResourcesA = await worldA.getResourceCount();
+    
+    // Move around to find resources
+    await worldA.movePlayer('right', 10);
+    await worldA.movePlayer('down', 10);
+    await worldA.collectResource();
+    
+    // Verify User A collected a resource
+    const newResourcesA = await worldA.getResourceCount();
+    
+    if (newResourcesA > initialResourcesA) {
+      // Resource was collected, User B should see it disappear
+      const resourceCollectedEvent = await worldB.waitForResourceEvent('RESOURCE_COLLECTED');
+      expect(resourceCollectedEvent).toBeDefined();
+      expect(resourceCollectedEvent.userId).toBe(userJoinedEvent2.user.userId);
+    }
+    
+    // User A can drop a resource for User B
+    if (newResourcesA > initialResourcesA) {
+      await worldA.dropResource(0); // Drop first resource
+      
+      // User B should see the dropped resource
+      const resourceDroppedEvent = await worldB.waitForResourceEvent('RESOURCE_DROPPED');
+      expect(resourceDroppedEvent).toBeDefined();
+      
+      // User B can collect the dropped resource
+      await worldB.moveToPosition(resourceDroppedEvent.position.x, resourceDroppedEvent.position.y);
+      await worldB.collectResource();
+      
+      // Verify User B collected the resource
+      const newResourcesB = await worldB.getResourceCount();
+      expect(newResourcesB).toBeGreaterThan(0);
+    }
+  });
+  
+  test('Users can see terrain changes in real-time', async () => {
+    // Test terrain modification if the game supports it
+    // For example, if players can build structures or modify the environment
+    
+    // User A builds a structure or modifies terrain
+    if (await worldA.canModifyTerrain()) {
+      const structureName = `Test Structure ${Date.now()}`;
+      await worldA.placeStructure(structureName);
+      
+      // User B should see the new structure
+      const structureEvent = await worldB.waitForTerrainEvent('TERRAIN_UPDATED');
+      expect(structureEvent).toBeDefined();
+      
+      // User B should be able to interact with it
+      await worldB.moveToPosition(structureEvent.position.x, structureEvent.position.y);
+      await worldB.interactWithStructure();
+      
+      // Both users should receive notification
+      await worldA.waitForNotification(new RegExp(`.*${structureName}.*`));
+      await worldB.waitForNotification(new RegExp(`.*${structureName}.*`));
+    }
+  });
 
   test.afterAll(async () => {
     // Clean up

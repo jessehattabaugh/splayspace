@@ -1,6 +1,11 @@
 /**
  * Test environment utilities for Playwright tests
  */
+import fs from 'fs';
+import path from 'path';
+import { createTestWebSocketServer } from './websocket-server.js';
+
+let testWebSocketServer;
 
 /**
  * Get the base URL for tests from environment variables or defaults
@@ -9,11 +14,32 @@ export function getTestEnvironment() {
   // Get environment from env variable or default to staging
   const environment = process.env.SPLAY_TEST_ENV || 'staging';
   
-  // Map of environments to base URLs
+  // If we're using staging and have a deployed URL, use it
+  if (environment === 'staging') {
+    try {
+      const stagingUrlPath = path.join(process.cwd(), '.staging-url');
+      const wsUrlPath = path.join(process.cwd(), '.staging-ws-url');
+      
+      if (fs.existsSync(stagingUrlPath) && fs.existsSync(wsUrlPath)) {
+        const baseUrl = fs.readFileSync(stagingUrlPath, 'utf8').trim();
+        const wsUrl = fs.readFileSync(wsUrlPath, 'utf8').trim();
+        
+        return {
+          name: 'staging-deployed',
+          baseUrl,
+          wsUrl
+        };
+      }
+    } catch (error) {
+      console.warn('Could not read staging URLs from files:', error);
+    }
+  }
+  
+  // Map of environments to base URLs (fallbacks)
   const environments = {
     local: 'http://localhost:3333',
-    staging: 'https://staging.splayspace.com', // Update with your actual staging URL
-    production: 'https://splayspace.com', // Update with your actual production URL
+    staging: 'https://staging.splayspace.com',
+    production: 'https://splayspace.com'
   };
   
   // If a specific URL is provided, use that instead
@@ -59,7 +85,7 @@ export async function waitForWebSocketEvent(page, eventType, timeout = 5000) {
         // Create a handler for the message event
         const handleMessage = (event) => {
           try {
-            const data = JSON.parse(event.data);
+            const data = event.detail;
             if (data.type === eventType) {
               window.removeEventListener('message:received', handleMessage);
               resolve(data);
@@ -151,4 +177,37 @@ export async function injectWebSocketMonitoring(page) {
       CLOSED: { value: OrigWebSocket.CLOSED }
     });
   });
+}
+
+/**
+ * Start local WebSocket server for testing
+ */
+export async function startTestWebSocketServer(port = 3333) {
+  if (testWebSocketServer) {
+    return testWebSocketServer;
+  }
+  
+  // Import dynamically to avoid requiring ws in non-test environments
+  try {
+    testWebSocketServer = await createTestWebSocketServer(port);
+    return testWebSocketServer;
+  } catch (error) {
+    console.error('Failed to start test WebSocket server:', error);
+    throw error;
+  }
+}
+
+/**
+ * Stop test WebSocket server
+ */
+export async function stopTestWebSocketServer() {
+  if (testWebSocketServer) {
+    await new Promise((resolve) => {
+      testWebSocketServer.close(() => {
+        console.log('Test WebSocket server closed');
+        testWebSocketServer = null;
+        resolve();
+      });
+    });
+  }
 }

@@ -12,17 +12,113 @@
   --border-color: #444;
 }
 
+/* Basic styles for SplaySpace */
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  overflow: hidden;
-  background-color: var(--dark-bg);
-  color: var(--text-color);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  line-height: 1.6;
+  margin: 0;
+  padding: 20px;
+  color: #333;
+  background-color: #f5f5f5;
+}
+
+h1 {
+  text-align: center;
+  margin-bottom: 1.5rem;
 }
 
 main {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
+  max-width: 800px;
+  margin: 0 auto;
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Connection status styling */
+#connection-status {
+  padding: 10px;
+  margin-bottom: 15px;
+  border-radius: 4px;
+  text-align: center;
+  font-weight: bold;
+  background-color: #eee;
+}
+
+#connection-status.connected {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+#connection-status.disconnected {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+#connection-status.error {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.connection-url {
+  font-size: 0.8em;
+  opacity: 0.7;
+  font-weight: normal;
+}
+
+/* Debug button styling */
+#debug-connection {
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 0.8em;
+  opacity: 0.7;
+  transition: opacity 0.3s;
+}
+
+#debug-connection:hover {
+  opacity: 1;
+}
+
+#connection-status {
+  padding: 10px;
+  margin-bottom: 15px;
+  border-radius: 4px;
+  text-align: center;
+  font-weight: bold;
+  background-color: #eee;
+}
+
+#connection-status.connected {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+#connection-status.disconnected {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+#connection-status.error {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.world {
+  height: 400px;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+  position: relative;
+  background-color: #f9f9f9;
+  overflow: hidden;
+  image-rendering: pixelated;
+  background-color: #000;
+  cursor: default;
+  position: relative;
+  overflow: hidden;
 }
 
 button {
@@ -60,6 +156,56 @@ button:focus, input:focus {
   font-size: 14px;
 }
 
+/* Notifications */
+#notification-area {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 300px;
+  z-index: 100;
+}
+
+.notification {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 4px;
+  background-color: #d4edda;
+  color: #155724;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  animation: fadeIn 0.3s ease-in;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.notification-error {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.notification-warning {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.notification-info {
+  background-color: #d1ecf1;
+  color: #0c5460;
+}
+
+.notification.fade-out {
+  animation: fadeOut 0.5s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-20px); }
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .header {
@@ -76,4 +222,82 @@ button:focus, input:focus {
     padding: 6px 8px;
     font-size: 12px;
   }
+}
+
+/* Game world styling */
+.sprite {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  transition: transform 0.1s ease-out;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+.sprite-name {
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  color: white;
+  text-shadow: 1px 1px 0 #000;
+  font-size: 12px;
+}
+
+.sprite-emote {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 16px;
+  filter: drop-shadow(1px 1px 0 rgba(0,0,0,0.5));
+}
+
+.tile {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  image-rendering: pixelated;
+}
+
+/* Chat and UI improvements */
+#chat-panel {
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 10px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.chat-message {
+  color: #fff;
+  margin: 4px 0;
+  word-wrap: break-word;
+}
+
+.emote-picker {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+  padding: 5px;
+  background: rgba(0, 0, 0, 0.9);
+  border-radius: 4px;
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+}
+
+.emote-button {
+  font-size: 20px;
+  padding: 5px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  border-radius: 4px;
+}
+
+.emote-button:hover {
+  background: rgba(255, 255, 255, 0.1);
 }

@@ -6,6 +6,7 @@ const WebSocketService = require('./WebSocketService');
 const UserRepository = require('./repositories/UserRepository');
 const WorldRepository = require('./repositories/WorldRepository');
 const ResourceRepository = require('./repositories/ResourceRepository');
+const MessageRepository = require('./repositories/MessageRepository');
 const UserService = require('../services/UserService');
 const WorldService = require('../services/WorldService');
 const ResourceService = require('../services/ResourceService');
@@ -25,23 +26,24 @@ async function initializeContainer() {
     const tables = await arc.tables();
     
     // Initialize core infrastructure services
-    const messagingService = new WebSocketService(arc);
+    const messagingService = new WebSocketService(arc, logger);
     
     // Initialize repositories
-    const userRepository = new UserRepository(tables);
-    const worldRepository = new WorldRepository(tables);
-    const resourceRepository = new ResourceRepository(tables);
+    const userRepository = new UserRepository(tables, logger);
+    const worldRepository = new WorldRepository(tables, logger);
+    const resourceRepository = new ResourceRepository(tables, logger);
+    const messageRepository = new MessageRepository(messagingService, logger);
     
     // Initialize domain services
-    const userService = new UserService(userRepository, messagingService, logger);
-    const worldService = new WorldService(worldRepository, messagingService, logger);
+    const userService = new UserService(userRepository, messageRepository, logger);
+    const worldService = new WorldService(worldRepository, messageRepository, logger);
     const resourceService = new ResourceService(
       resourceRepository, 
-      userRepository, 
-      messagingService,
+      userRepository,
+      messageRepository,
       logger
     );
-    const chatService = new ChatService(messagingService, logger);
+    const chatService = new ChatService(messageRepository, logger);
     
     // Return container with all services
     return {
@@ -50,7 +52,8 @@ async function initializeContainer() {
       repositories: {
         userRepository,
         worldRepository,
-        resourceRepository
+        resourceRepository,
+        messageRepository
       },
       services: {
         userService,

@@ -2,35 +2,30 @@
 splayspace
 
 @http
-get /
+# Define HTTP routes here if needed
 
-@static
-fingerprint true
+@ws
+connect
+default
+disconnect
+websocket
 
 @tables
 users
-  userId *String
-  
+  id *String
+
 worlds
-  worldId *String
-  
+  id *String
+
 resources
-  resourceId *String
-
-@tables-streams
-users
-worlds
-resources
-
-@websocket
-connect
-disconnect
-default
-
-@plugins
-enhance
+  id *String
 
 @aws
-runtime nodejs18.x
-architecture arm64
-region us-west-2
+# Load WebSocket API ID from preferences if available
+prefs
+  WEBSOCKET_API_ID
+
+# Removes hard-coded value and uses preference
+apigateway
+  websocketApiId $WEBSOCKET_API_ID
+  websocketApiRouteSelectionExpression $request.body.action

@@ -1,4 +1,6 @@
-export default function Index({ wsUrl }) {
+export default function Index({ json }) {
+  const { wsUrl, gameConfig } = json;
+  
   return `
     <!DOCTYPE html>
     <html lang="en">
@@ -9,15 +11,9 @@ export default function Index({ wsUrl }) {
         <link rel="stylesheet" href="/_public/styles.css">
         <link rel="icon" href="/_public/favicon.ico">
         <meta name="description" content="Explore an infinite world with friends in SplaySpace">
-        <script>
-          // Set WebSocket URL from server-side data
-          window.WS_URL = "${wsUrl}";
-        </script>
       </head>
       <body>
         <main>
-          <header-component></header-component>
-          
           <game-container></game-container>
           
           <hud-overlay></hud-overlay>
@@ -30,8 +26,18 @@ export default function Index({ wsUrl }) {
           
           <loading-screen></loading-screen>
           
+          <header-component></header-component>
+          
           <footer-component></footer-component>
         </main>
+        
+        <script>
+          // Pass server configuration to client
+          window.SERVER_CONFIG = {
+            wsUrl: "${wsUrl}",
+            gameConfig: ${JSON.stringify(gameConfig)}
+          };
+        </script>
         
         <script type="module" src="/_public/browser/index.mjs"></script>
       </body>

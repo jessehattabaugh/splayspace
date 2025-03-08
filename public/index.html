@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SplaySpace</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main>
+    <h1>SplaySpace</h1>
+    <div id="app">
+      <div id="connection-status">Disconnected</div>
+      <div id="world-container" class="world"></div>
+      <div id="controls">
+        <div id="player-coordinates">X: 0 Y: 0</div>
+        <button id="toggle-chat">Chat</button>
+        <button id="toggle-inventory">Inventory</button>
+      </div>
+      <div id="chat-panel" class="hidden">
+        <div id="chat-messages"></div>
+        <div class="chat-input-container">
+          <input id="chat-input" type="text" placeholder="Type your message...">
+          <button id="send-message">Send</button>
+        </div>
+      </div>
+      <div id="inventory-panel" class="hidden">
+        <h3>Inventory <span id="resource-counter">(0)</span></h3>
+        <div id="inventory-items"></div>
+        <button id="drop-item-button" disabled>Drop</button>
+      </div>
+      <div id="mini-map-canvas"></div>
+      <div id="notification-area"></div>
+      <div id="mobile-controls" class="hidden">
+        <button id="up-btn">↑</button>
+        <button id="left-btn">←</button>
+        <button id="right-btn">→</button>
+        <button id="down-btn">↓</button>
+        <button id="action-btn">Action</button>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // WebSocket connection handling
+    document.addEventListener('DOMContentLoaded', async () => {
+      const connectionStatus = document.getElementById('connection-status');
+      const worldContainer = document.getElementById('world-container');
+      const chatToggle = document.getElementById('toggle-chat');
+      const chatPanel = document.getElementById('chat-panel');
+      const chatInput = document.getElementById('chat-input');
+      const sendMessageButton = document.getElementById('send-message');
+      const chatMessages = document.getElementById('chat-messages');
+      const playerCoordinates = document.getElementById('player-coordinates');
+      const inventoryToggle = document.getElementById('toggle-inventory');
+      const inventoryPanel = document.getElementById('inventory-panel');
+      const inventoryItems = document.getElementById('inventory-items');
+      const resourceCounter = document.getElementById('resource-counter');
+      const mobileControls = document.getElementById('mobile-controls');
+      
+      // Show mobile controls on small screens
+      if (window.innerWidth < 768) {
+        mobileControls.classList.remove('hidden');
+      }
+      
+      // Toggle chat panel
+      chatToggle.addEventListener('click', () => {
+        chatPanel.classList.toggle('hidden');
+        if (!chatPanel.classList.contains('hidden')) {
+          chatInput.focus();
+        }
+      });
+      
+      // Toggle inventory panel
+      inventoryToggle.addEventListener('click', () => {
+        inventoryPanel.classList.toggle('hidden');
+      });
+      
+      // Send chat message
+      sendMessageButton.addEventListener('click', sendChatMessage);
+      chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendChatMessage();
+      });
+      
+      function sendChatMessage() {
+        const message = chatInput.value.trim();
+        if (message && socket && socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({
+            type: 'CHAT',
+            payload: { message }
+          }));
+          chatInput.value = '';
+        } else if (!message) {
+          // Show validation error
+          chatInput.classList.add('error');
+          setTimeout(() => chatInput.classList.remove('error'), 2000);
+        }
+      }
+      
+      // Handle keyboard controls
+      document.addEventListener('keydown', (e) => {
+        if (!socket || socket.readyState !== WebSocket.OPEN) return;
+        
+        let direction = null;
+        switch (e.key) {
+          case 'ArrowUp':
+            direction = { x: 0, y: -1 };
+            break;
+          case 'ArrowDown':
+            direction = { x: 0, y: 1 };
+            break;
+          case 'ArrowLeft':
+            direction = { x: -1, y: 0 };
+            break;
+          case 'ArrowRight':
+            direction = { x: 1, y: 0 };
+            break;
+          case ' ':
+            // Space for interaction
+            socket.send(JSON.stringify({
+              type: 'INTERACT',
+              payload: {}
+            }));
+            break;
+        }
+        
+        if (direction) {
+          // Update local position immediately for responsiveness
+          const pos = getCurrentPosition();
+          updatePosition({
+            x: pos.x + direction.x,
+            y: pos.y + direction.y
+          });
+          
+          // Send move command
+          socket.send(JSON.stringify({
+            type: 'MOVE',
+            payload: { x: direction.x, y: direction.y }
+          }));
+        }
+      });
+      
+      // Get current position from coordinates display
+      function getCurrentPosition() {
+        const text = playerCoordinates.innerText;
+        const match = text.match(/X: (-?\d+) Y: (-?\d+)/);
+        return {
+          x: match ? parseInt(match[1]) : 0,
+          y: match ? parseInt(match[2]) : 0
+        };
+      }
+      
+      // Update position display
+      function updatePosition(pos) {
+        playerCoordinates.innerText = `X: ${pos.x} Y: ${pos.y}`;
+      }
+      
+      // First, try to fetch WebSocket URL from server config
+      let wsUrls = [];
+      let configFetched = false;
+      
+      try {
+        const response = await fetch('/api');
+        if (response.ok) {
+          const data = await response.json();
+          
+          // Use the array of URLs if available, otherwise use the single URL
+          if (data.allWsUrls && Array.isArray(data.allWsUrls) && data.allWsUrls.length > 0) {
+            wsUrls = data.allWsUrls;
+          } else if (data.wsUrl) {
+            wsUrls = [data.wsUrl];
+          }
+          
+          configFetched = true;
+          console.log(`Using WebSocket URLs from server config: ${wsUrls.join(', ')}`);
+        } else {
+          console.error('Failed to fetch server config, falling back to default');
+        }
+      } catch (error) {
+        console.error('Error fetching server config:', error);
+      }
+      
+      // If config fetch failed, compute WebSocket URL based on current page URL
+      if (!configFetched || wsUrls.length === 0) {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host;
+        
+        // Add computed URLs
+        wsUrls = [
+          `${protocol}//${host}`,
+          `${protocol}//${host}/websocket`,
+        ];
+        
+        // If this looks like API Gateway
+        if (host.includes('execute-api')) {
+          wsUrls.push(`${protocol}//${host}/staging`);
+          wsUrls.push(`${protocol}//${host}/staging/websocket`);
+          wsUrls.push(`${protocol}//${host}/production`);
+          wsUrls.push(`${protocol}//${host}/production/websocket`);
+        }
+        
+        console.log(`Using computed WebSocket URLs: ${wsUrls.join(', ')}`);
+      }
+      
+      let socket;
+      let reconnectAttempts = 0;
+      let currentUrlIndex = 0;
+      const MAX_RECONNECT_ATTEMPTS = 3; // Per URL
+      
+      function connectWebSocket() {
+        // If we've tried all URLs in the list, start over
+        if (currentUrlIndex >= wsUrls.length) {
+          // Reset to the first URL and increment reconnect attempts
+          currentUrlIndex = 0;
+          reconnectAttempts++;
+          
+          // If we've tried all URLs multiple times, give up
+          if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+            connectionStatus.textContent = 'Connection Failed';
+            connectionStatus.className = 'error';
+            addNotification('Could not establish connection to any server. Please refresh the page.', 'error');
+            return;
+          }
+        }
+        
+        const wsUrl = wsUrls[currentUrlIndex];
+        connectionStatus.textContent = `Connecting (${currentUrlIndex + 1}/${wsUrls.length})...`;
+        connectionStatus.className = '';
+        console.log(`Trying WebSocket URL: ${wsUrl}`);
+        
+        try {
+          socket = new WebSocket(wsUrl);
+          
+          // Set a connection timeout
+          const connectionTimeout = setTimeout(() => {
+            if (socket && socket.readyState !== WebSocket.OPEN) {
+              console.log(`WebSocket connection timeout for ${wsUrl}, trying next URL`);
+              socket.close();
+              // Try the next URL
+              currentUrlIndex++;
+              setTimeout(connectWebSocket, 500);
+            }
+          }, 5000); // 5 second timeout
+          
+          socket.addEventListener('open', () => {
+            clearTimeout(connectionTimeout);
+            connectionStatus.textContent = 'Connected';
+            connectionStatus.className = 'connected';
+            console.log(`WebSocket connection established to ${wsUrl}`);
+            
+            // Add URL to connection status for debugging
+            const urlSpan = document.createElement('span');
+            urlSpan.className = 'connection-url';
+            urlSpan.textContent = wsUrl;
+            connectionStatus.appendChild(document.createElement('br'));
+            connectionStatus.appendChild(urlSpan);
+            
+            // Reset reconnect attempts since we connected successfully
+            reconnectAttempts = 0;
+            
+            // Request initial world state
+            socket.send(JSON.stringify({
+              type: 'REQUEST_WORLD_STATE',
+              payload: {}
+            }));
+          });
+          
+          socket.addEventListener('message', (event) => {
+            try {
+              const data = JSON.parse(event.data);
+              console.log('Received message:', data);
+              
+              // Handle different message types
+              switch (data.type) {
+                case 'WELCOME':
+                  // Initial connection confirmation
+                  updatePosition(data.position);
+                  addNotification(`Welcome! Your user ID is ${data.userId}`);
+                  break;
+                case 'WORLD_UPDATE':
+                  // Update world display
+                  break;
+                case 'USER_UPDATE':
+                  // Update user position/status
+                  break;
+                case 'MOVE_CONFIRMED':
+                  // Server confirmed movement
+                  updatePosition(data.position);
+                  break;
+                case 'CHAT':
+                  // Display chat message
+                  const msgDiv = document.createElement('div');
+                  msgDiv.className = 'chat-message';
+                  msgDiv.textContent = `${data.username || 'Unknown'}: ${data.message}`;
+                  chatMessages.appendChild(msgDiv);
+                  chatMessages.scrollTop = chatMessages.scrollHeight;
+                  break;
+                case 'SERVER_ERROR':
+                  // Handle server errors
+                  addNotification(`Server error: ${data.message}`, 'error');
+                  break;
+                default:
+                  console.log('Unknown message type:', data.type);
+              }
+              
+              // Dispatch custom event for testing
+              window.dispatchEvent(new CustomEvent('message:received', { 
+                detail: data 
+              }));
+            } catch (error) {
+              console.error('Error parsing message:', error);
+            }
+          });
+          
+          socket.addEventListener('close', (event) => {
+            clearTimeout(connectionTimeout);
+            connectionStatus.textContent = 'Disconnected';
+            connectionStatus.className = 'disconnected';
+            console.log(`WebSocket connection to ${wsUrl} closed`, event.code, event.reason);
+            
+            // If this wasn't a normal closure, try the next URL
+            if (event.code !== 1000) {
+              currentUrlIndex++;
+              const delay = Math.min(1000 * Math.pow(2, Math.min(reconnectAttempts, 3)), 5000);
+              console.log(`Trying next URL in ${delay}ms...`);
+              addNotification(`Connection failed. Trying another server in ${delay/1000} seconds...`, 'warning');
+              setTimeout(connectWebSocket, delay);
+            }
+          });
+          
+          socket.addEventListener('error', (error) => {
+            console.error(`WebSocket error with ${wsUrl}:`, error);
+            connectionStatus.textContent = 'Error';
+            connectionStatus.className = 'error';
+            
+            // Try next URL on error
+            if (socket.readyState !== WebSocket.CLOSED && socket.readyState !== WebSocket.CLOSING) {
+              socket.close();
+            }
+          });
+        } catch (err) {
+          connectionStatus.textContent = 'Connection Failed';
+          connectionStatus.className = 'error';
+          console.error(`Failed to create WebSocket with ${wsUrl}:`, err);
+          
+          // Try the next URL after an error
+          currentUrlIndex++;
+          const delay = 500;
+          setTimeout(connectWebSocket, delay);
+        }
+      }
+      
+      // Add notification with optional type (error, warning, info)
+      function addNotification(message, type = 'info') {
+        const notificationArea = document.getElementById('notification-area');
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.textContent = message;
+        notificationArea.appendChild(notification);
+        
+        // Remove after 5 seconds
+        setTimeout(() => {
+          notification.classList.add('fade-out');
+          setTimeout(() => notification.remove(), 500);
+        }, 5000);
+      }
+      
+      // Update notification function to accept HTML
+      function addNotification(message, type = 'info', isHtml = false) {
+        const notificationArea = document.getElementById('notification-area');
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        
+        if (isHtml) {
+          notification.innerHTML = message;
+        } else {
+          notification.textContent = message;
+        }
+        
+        notificationArea.appendChild(notification);
+        
+        // Remove after 8 seconds
+        setTimeout(() => {
+          notification.classList.add('fade-out');
+          setTimeout(() => notification.remove(), 500);
+        }, 8000);
+      }
+      
+      // Add connection debugging tool
+      const debugButton = document.createElement('button');
+      debugButton.id = 'debug-connection';
+      debugButton.textContent = 'Debug Connection';
+      debugButton.style.position = 'fixed';
+      debugButton.style.bottom = '10px';
+      debugButton.style.left = '10px';
+      debugButton.style.zIndex = '1000';
+      document.body.appendChild(debugButton);
+      
+      debugButton.addEventListener('click', () => {
+        const debugInfo = `
+          <h4>Connection Debug Info</h4>
+          <p>Current URL index: ${currentUrlIndex} of ${wsUrls.length}</p>
+          <p>Reconnect attempts: ${reconnectAttempts}</p>
+          <p>WebSocket readyState: ${socket ? socket.readyState : 'N/A'}</p>
+          <p>Available URLs:</p>
+          <ul>
+            ${wsUrls.map((url, i) => `<li>${i === currentUrlIndex ? '→ ' : ''}${url}</li>`).join('')}
+          </ul>
+        `;
+        addNotification(debugInfo, 'info', true);
+      });
+      
+      // Initial connection
+      connectWebSocket();
+      
+      // Handle window close/reload to cleanly disconnect
+      window.addEventListener('beforeunload', () => {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.close();
+        }
+      });
+      
+      // Make functions available globally for tests
+      window.TEST_MODE_AVAILABLE = true;
+      window.enableTestMode = function() {
+        console.log('Test mode enabled');
+        return true;
+      };
+      
+      window.spawnTestEntities = function(count) {
+        console.log(`Spawning ${count} test entities`);
+        return count;
+      };
+      
+      window.getAverageFPS = function() {
+        return 60; // Mock FPS for testing
+      };
+    });
+  </script>
+</body>
+</html>

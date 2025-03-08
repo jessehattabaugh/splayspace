@@ -1,96 +1,77 @@
-const { createNoise2D } = require('simplex-noise');
+import { createNoise2D } from 'simplex-noise';
 
-// Create noise generators with different seeds for variety
-const elevationNoise = createNoise2D();
-const moistureNoise = createNoise2D();
-const temperatureNoise = createNoise2D();
+const BIOMES = {
+  FOREST: 'forest',
+  PLAINS: 'plains',
+  DESERT: 'desert',
+  MOUNTAIN: 'mountain',
+  DUNGEON: 'dungeon'
+};
 
-/**
- * Generate terrain for a chunk at coordinates
- */
-function generateTerrain(chunkX, chunkY, chunkSize = 100) {
+const TILES = {
+  GRASS: { type: 'grass', walkable: true, emoji: '🌱' },
+  TREE: { type: 'tree', walkable: false, emoji: '🌲', harvestable: true, resource: 'wood' },
+  ROCK: { type: 'rock', walkable: false, emoji: '🪨', harvestable: true, resource: 'stone' },
+  WATER: { type: 'water', walkable: false, emoji: '💧' },
+  SAND: { type: 'sand', walkable: true, emoji: '🏖️' },
+  WALL: { type: 'wall', walkable: false, emoji: '🧱' },
+  FLOOR: { type: 'floor', walkable: true, emoji: '⬜' }
+};
+
+export function generateTerrain(chunkX, chunkY, size) {
+  const noise2D = createNoise2D();
   const terrain = [];
-  const scale = 0.01;
-  const baseX = chunkX * chunkSize;
-  const baseY = chunkY * chunkSize;
+  const scale = 0.05;
   
-  for (let y = 0; y < chunkSize; y++) {
-    const row = [];
-    for (let x = 0; x < chunkSize; x++) {
-      const worldX = baseX + x;
-      const worldY = baseY + y;
+  for (let y = 0; y < size; y++) {
+    terrain[y] = [];
+    for (let x = 0; x < size; x++) {
+      const worldX = chunkX * size + x;
+      const worldY = chunkY * size + y;
       
-      // Generate terrain values using multiple octaves of noise
-      const elevation = getElevation(worldX, worldY, scale);
-      const moisture = getMoisture(worldX, worldY, scale);
-      const temperature = getTemperature(worldX, worldY, scale);
+      // Generate base noise for elevation
+      const elevation = (noise2D(worldX * scale, worldY * scale) + 1) / 2;
       
-      // Determine terrain type based on values
-      const type = getTerrainType(elevation, moisture, temperature);
+      // Generate biome noise
+      const biomeNoise = noise2D(worldX * 0.02, worldY * 0.02);
       
-      row.push({
-        type,
-        elevation,
-        walkable: ['grass', 'sand', 'dirt', 'path'].includes(type)
-      });
+      // Determine if this is a dungeon entrance
+      const isDungeon = noise2D(worldX * 0.01, worldY * 0.01) > 0.8;
+      
+      let tile;
+      if (isDungeon) {
+        tile = generateDungeonTile(worldX, worldY, noise2D);
+      } else {
+        tile = generateBiomeTile(elevation, biomeNoise);
+      }
+      
+      terrain[y][x] = tile;
     }
-    terrain.push(row);
   }
   
   return terrain;
 }
 
-function getElevation(x, y, scale) {
-  // Use multiple octaves for more natural terrain
-  let elevation = 0;
-  let amplitude = 1;
-  let frequency = 1;
-  const octaves = 4;
-  let maxValue = 0;
-  
-  for (let i = 0; i < octaves; i++) {
-    elevation += amplitude * elevationNoise(x * scale * frequency, y * scale * frequency);
-    maxValue += amplitude;
-    amplitude *= 0.5;
-    frequency *= 2;
-  }
-  
-  // Normalize to [0, 1]
-  elevation = (elevation / maxValue + 1) * 0.5;
-  return elevation;
-}
-
-function getMoisture(x, y, scale) {
-  return (moistureNoise(x * scale, y * scale) + 1) * 0.5;
-}
-
-function getTemperature(x, y, scale) {
-  return (temperatureNoise(x * scale, y * scale) + 1) * 0.5;
-}
-
-function getTerrainType(elevation, moisture, temperature) {
+function generateBiomeTile(elevation, biomeNoise) {
   if (elevation < 0.3) {
-    return 'water';
+    return { ...TILES.WATER };
+  } else if (elevation < 0.4) {
+    return { ...TILES.SAND };
+  } else if (elevation < 0.7) {
+    // Plains and forests
+    return biomeNoise > 0.2 ? { ...TILES.TREE } : { ...TILES.GRASS };
+  } else {
+    // Mountains
+    return { ...TILES.ROCK };
   }
-  if (elevation < 0.4) {
-    return 'sand';
-  }
-  if (elevation > 0.8) {
-    if (temperature < 0.3) return 'snow';
-    return 'mountain';
-  }
-  if (elevation > 0.6) {
-    return 'rock';
-  }
-  if (moisture > 0.6) {
-    return 'forest';
-  }
-  if (moisture > 0.3) {
-    return 'grass';
-  }
-  return 'dirt';
 }
 
-module.exports = {
-  generateTerrain
-};
+function generateDungeonTile(x, y, noise2D) {
+  const dungeonNoise = noise2D(x * 0.2, y * 0.2);
+  
+  if (dungeonNoise > 0.6) {
+    return { ...TILES.WALL };
+  } else {
+    return { ...TILES.FLOOR };
+  }
+}

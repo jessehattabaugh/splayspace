@@ -6,31 +6,67 @@
   "scripts": {
     "start": "npx arc sandbox",
     "deploy": "npx arc deploy",
+    "deploy:staging": "npx arc deploy --staging",
+    "deploy:production": "npx arc deploy --production",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:debug": "playwright test --debug",
-    "test:e2e:report": "npx playwright show-report"
+    "test:e2e": "SPLAY_TEST_ENV=staging playwright test",
+    "test:e2e:ui": "SPLAY_TEST_ENV=staging playwright test --ui",
+    "test:e2e:debug": "SPLAY_TEST_ENV=staging playwright test --debug",
+    "test:e2e:report": "npx playwright show-report",
+    "test:e2e:local": "SPLAY_TEST_ENV=local playwright test",
+    "predeploy:staging": "npm test",
+    "predeploy:e2e": "node scripts/deploy-staging.js",
+    "deploy:e2e": "SPLAY_TEST_ENV=staging playwright test"
   },
-  "keywords": ["game", "multiplayer", "infinite-world"],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "game",
+    "serverless",
+    "multiplayer",
+    "2D",
+    "infinite-world"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@architect/functions": "^7.0.0",
-    "@architect/sandbox": "^5.9.0",
-    "@enhance/arc-plugin-enhance": "^8.0.0",
-    "@enhance/element": "^2.0.0",
-    "@enhance/types": "^0.6.1",
-    "nanoid": "^5.0.1",
-    "simplex-noise": "^4.0.1"
+    "@architect/functions": "latest",
+    "@enhance/arc-plugin-enhance": "latest",
+    "@enhance/ssr": "latest",
+    "nanoid": "latest",
+    "simplex-noise": "latest"
   },
   "devDependencies": {
-    "@architect/architect": "^10.16.0",
-    "@playwright/test": "^1.39.0",
-    "vitest": "^0.34.6",
-    "eslint": "^8.52.0",
-    "prettier": "^3.0.3"
+    "@architect/architect": "latest",
+    "@enhance/cli": "latest",
+    "@enhance/types": "latest",
+    "@playwright/test": "latest",
+    "eslint": "latest",
+    "eslint-plugin-playwright": "latest",
+    "husky": "latest",
+    "lint-staged": "latest",
+    "prettier": "latest",
+    "vitest": "latest",
+    "ws": "latest"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "*.{js,mjs,json,md}": "prettier --write"
+  },
+  "arc": {
+    "plugins": [
+      "@enhance/arc-plugin-enhance"
+    ],
+    "enhance": {
+      "sessions": true,
+      "static": true
+    }
   }
 }
