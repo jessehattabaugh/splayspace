@@ -1,36 +1,30 @@
 {
-	"author": "Jesse Hattabaugh <webmaster@jessehattabaugh.com> (jessehattabaugh.com)",
-	"bugs": {
-		"url": "https://github.com/jessehattabaugh/splayspace/issues"
-	},
-	"description": "An infinite flat world to wander with your friends.",
-	"devDependencies": {
-		"@architect/architect": "^6.0.24",
-		"husky": "^3.1.0",
-		"kill-port": "^1.6.0",
-		"lighthouse-ci": "^1.10.0",
-		"prettier": "^1.19.1",
-		"start-server-and-test": "^1.10.6"
-	},
-	"homepage": "https://github.com/jessehattabaugh/splayspace#readme",
-	"license": "UNLICENSED",
-	"main": "index.js",
-	"name": "splayspace",
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/jessehattabaugh/splayspace.git"
-	},
-	"scripts": {
-		"arc": "arc",
-		"dev": "npm run hydrate && arc sandbox",
-		"format": "prettier --write **/*.{css,html,js,json,md,webmanifest} --ignore-path .gitignore",
-		"hydrate": "npx arc hydrate",
-		"lighthouse": "lighthouse-ci http://localhost:3333 --score=30",
-		"prod": "arc deploy production",
-		"stage": "arc deploy",
-		"start": "npm run dev",
-		"stop": "kill-port 3333",
-		"test": "start-test start http-get://localhost:3333 lighthouse"
-	},
-	"version": "0.0.0"
+  "name": "splayspace",
+  "version": "1.0.0",
+  "description": "An infinite flat world to wander with your friends",
+  "main": "index.js",
+  "scripts": {
+    "start": "npx arc sandbox",
+    "deploy": "npx arc deploy",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": ["game", "multiplayer", "infinite-world"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@architect/architect": "^10.13.1",
+    "@enhance/arc-plugin-enhance": "^6.2.1",
+    "@enhance/element": "^1.1.1",
+    "@enhance/types": "^0.6.0",
+    "uuid": "^9.0.1",
+    "nanoid": "^5.0.1",
+    "simplex-noise": "^4.0.1"
+  },
+  "devDependencies": {
+    "vitest": "^0.34.6",
+    "@architect/sandbox": "^5.8.1",
+    "eslint": "^8.49.0",
+    "prettier": "^3.0.3"
+  }
 }

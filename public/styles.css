@@ -1,0 +1,79 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --primary-color: #0066cc;
+  --dark-bg: #1a1a2e;
+  --panel-bg: rgba(0, 0, 0, 0.8);
+  --text-color: #ffffff;
+  --border-color: #444;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow: hidden;
+  background-color: var(--dark-bg);
+  color: var(--text-color);
+}
+
+main {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:focus, input:focus {
+  outline: 2px solid var(--primary-color);
+}
+
+.header {
+  background: var(--panel-bg);
+  padding: 10px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header h1 {
+  font-size: 24px;
+  margin: 0;
+}
+
+.header nav {
+  display: flex;
+  gap: 10px;
+}
+
+.header button {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .header nav {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .header button {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+}
