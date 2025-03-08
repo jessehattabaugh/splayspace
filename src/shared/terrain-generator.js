@@ -45,7 +45,10 @@ export function generateTerrain(chunkX, chunkY, size) {
         tile = generateBiomeTile(elevation, biomeNoise);
       }
       
-      terrain[y][x] = tile;
+      terrain[y][x] = {
+        ...tile,
+        elevation // Add elevation to cell data
+      };
     }
   }
   

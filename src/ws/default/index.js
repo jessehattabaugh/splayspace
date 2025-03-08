@@ -7,88 +7,88 @@ import { generateTerrain } from '../../shared/terrain-generator';
  */
 export async function handler(event) {
   try {
-    console.log('WebSocket default event:', event);
-    
+    // Parse message body
+    let message;
+    try {
+      message = JSON.parse(event.body);
+    } catch (e) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: 'Invalid JSON message' })
+      };
+    }
+
     // Get the connection ID from the event
     const { connectionId } = event.requestContext;
     
     if (!connectionId) {
-      console.error('No connectionId provided in event');
       return { statusCode: 400, body: 'Missing connectionId' };
     }
     
-    // Parse the message body
-    let body;
-    try {
-      body = JSON.parse(event.body);
-    } catch (error) {
-      console.error('Failed to parse message body:', error);
-      return { statusCode: 400, body: 'Invalid JSON' };
+    // Validate message has type
+    if (!message.type || typeof message.type !== 'string') {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: 'Message must have a valid type' })
+      };
     }
-    
-    // Get the message type and payload
-    const { type, payload } = body;
-    
-    if (!type) {
-      console.error('No message type provided');
-      return { statusCode: 400, body: 'Missing message type' };
-    }
-    
-    // Get DynamoDB tables
-    const db = await arc.tables();
-    
-    // Find user by connection ID
-    const users = await db.users.scan({
-      FilterExpression: 'connectionId = :connectionId',
-      ExpressionAttributeValues: {
-        ':connectionId': connectionId
-      }
-    });
-    
-    // If no user found, return error
-    if (!users.Items || users.Items.length === 0) {
-      console.error(`No user found for connectionId ${connectionId}`);
-      return { statusCode: 403, body: 'User not found' };
-    }
-    
-    // Get the user
-    const user = users.Items[0];
-    
-    // Get the WebSocket utilities
-    const wss = await arc.tables.websocket();
-    
+
     // Handle different message types
-    switch (type) {
+    switch (message.type) {
       case 'MOVE':
-        return handleMove(wss, db, user, payload);
-        
+        return await handleMove(event, message);
       case 'CHAT':
-        return handleChat(wss, db, user, payload);
-        
+        return await handleChat(event, message);
       case 'REQUEST_CHUNK':
-        return handleRequestChunk(wss, db, user, payload);
-        
+        return await handleRequestChunk(event, message);
       case 'COLLECT_RESOURCE':
-        return handleCollectResource(wss, db, user, payload);
-        
+        return await handleCollectResource(event, message);
       default:
-        console.log(`Unknown message type: ${type}`);
-        return { statusCode: 400, body: `Unknown message type: ${type}` };
+        return {
+          statusCode: 400,
+          body: JSON.stringify({ error: `Unknown message type: ${message.type}` })
+        };
     }
   } catch (error) {
-    console.error('Error in WebSocket default handler:', error);
-    return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
+    console.error('Error in default handler:', error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: 'Internal server error' })
+    };
   }
 }
 
 /**
  * Handle MOVE message
  */
-async function handleMove(wss, db, user, payload) {
+async function handleMove(event, message) {
+  const { connectionId } = event.requestContext;
+  const { payload } = message;
+
   // Validate payload
   if (!payload || typeof payload.x !== 'number' || typeof payload.y !== 'number') {
     return { statusCode: 400, body: 'Invalid move payload' };
   }
+  
+  // Get DynamoDB tables
+  const db = await arc.tables();
+  
+  // Find user by connection ID
+  const users = await db.users.scan({
+    FilterExpression: 'connectionId = :connectionId',
+    ExpressionAttributeValues: {
+      ':connectionId': connectionId
+    }
+  });
+  
+  // If no user found, return error
+  if (!users.Items || users.Items.length === 0) {
+    console.error(`No user found for connectionId ${connectionId}`);
+    return { statusCode: 403, body: 'User not found' };
+  }
+  
+  // Get the user
+  const user = users.Items[0];
   
   // Calculate new position
   const newPosition = {
@@ -104,6 +104,9 @@ async function handleMove(wss, db, user, payload) {
       ':position': newPosition
     }
   });
+  
+  // Get the WebSocket utilities
+  const wss = await arc.tables.websocket();
   
   // Send confirmation to the user
   await wss.send(user.connectionId, JSON.stringify({
@@ -137,25 +140,48 @@ async function handleMove(wss, db, user, payload) {
 /**
  * Handle CHAT message
  */
-async function handleChat(wss, db, user, payload) {
+async function handleChat(event, message) {
+  const { connectionId } = event.requestContext;
+  const { payload } = message;
+
   // Validate payload
   if (!payload || !payload.message) {
     return { statusCode: 400, body: 'Invalid chat payload' };
   }
   
-  const message = payload.message.trim();
+  const chatMessage = payload.message.trim();
   
   // Ignore empty messages
-  if (!message) {
+  if (!chatMessage) {
     return { statusCode: 400, body: 'Empty message' };
   }
   
   // Limit message length
-  const truncatedMessage = message.length > 1000 ? 
-    message.substring(0, 997) + '...' : message;
+  const truncatedMessage = chatMessage.length > 1000 ? 
+    chatMessage.substring(0, 997) + '...' : chatMessage;
+  
+  // Get DynamoDB tables
+  const db = await arc.tables();
+  
+  // Find user by connection ID
+  const users = await db.users.scan({
+    FilterExpression: 'connectionId = :connectionId',
+    ExpressionAttributeValues: {
+      ':connectionId': connectionId
+    }
+  });
+  
+  // If no user found, return error
+  if (!users.Items || users.Items.length === 0) {
+    console.error(`No user found for connectionId ${connectionId}`);
+    return { statusCode: 403, body: 'User not found' };
+  }
+  
+  // Get the user
+  const user = users.Items[0];
   
   // Create chat message
-  const chatMessage = {
+  const chatPayload = {
     type: 'CHAT',
     userId: user.id,
     username: user.username || user.id,
@@ -163,12 +189,15 @@ async function handleChat(wss, db, user, payload) {
     timestamp: Date.now()
   };
   
+  // Get the WebSocket utilities
+  const wss = await arc.tables.websocket();
+  
   // Send to all users
   const allUsers = await db.users.scan();
   
   for (const recipient of allUsers.Items || []) {
     try {
-      await wss.send(recipient.connectionId, JSON.stringify(chatMessage));
+      await wss.send(recipient.connectionId, JSON.stringify(chatPayload));
     } catch (error) {
       console.error(`Failed to send chat message to user ${recipient.id}:`, error);
     }
@@ -180,13 +209,19 @@ async function handleChat(wss, db, user, payload) {
 /**
  * Handle REQUEST_CHUNK message
  */
-async function handleRequestChunk(wss, db, user, payload) {
+async function handleRequestChunk(event, message) {
+  const { connectionId } = event.requestContext;
+  const { payload } = message;
+
   // Validate payload
   if (!payload || typeof payload.chunkX !== 'number' || typeof payload.chunkY !== 'number') {
     return { statusCode: 400, body: 'Invalid chunk request payload' };
   }
   
   const { chunkX, chunkY } = payload;
+  
+  // Get DynamoDB tables
+  const db = await arc.tables();
   
   // Check if chunk exists in database
   const worldKey = `chunk_${chunkX}_${chunkY}`;
@@ -210,8 +245,11 @@ async function handleRequestChunk(wss, db, user, payload) {
     chunk = { id: worldKey, chunkX, chunkY, terrain };
   }
   
+  // Get the WebSocket utilities
+  const wss = await arc.tables.websocket();
+  
   // Send chunk data to user
-  await wss.send(user.connectionId, JSON.stringify({
+  await wss.send(connectionId, JSON.stringify({
     type: 'CHUNK_DATA',
     chunkX,
     chunkY,
@@ -224,7 +262,10 @@ async function handleRequestChunk(wss, db, user, payload) {
 /**
  * Handle COLLECT_RESOURCE message
  */
-async function handleCollectResource(wss, db, user, payload) {
+async function handleCollectResource(event, message) {
+  const { connectionId } = event.requestContext;
+  const { payload } = message;
+
   // Validate payload
   if (!payload || !payload.resourceId || !payload.position) {
     return { statusCode: 400, body: 'Invalid resource collection payload' };
@@ -232,16 +273,37 @@ async function handleCollectResource(wss, db, user, payload) {
   
   const { resourceId, position } = payload;
   
+  // Get DynamoDB tables
+  const db = await arc.tables();
+  
   // Check if resource exists
   const resource = await db.resources.get({ id: resourceId });
   
   if (!resource) {
-    await wss.send(user.connectionId, JSON.stringify({
+    const wss = await arc.tables.websocket();
+    await wss.send(connectionId, JSON.stringify({
       type: 'RESOURCE_ERROR',
       message: 'Resource not found'
     }));
     return { statusCode: 404, body: 'Resource not found' };
   }
+  
+  // Find user by connection ID
+  const users = await db.users.scan({
+    FilterExpression: 'connectionId = :connectionId',
+    ExpressionAttributeValues: {
+      ':connectionId': connectionId
+    }
+  });
+  
+  // If no user found, return error
+  if (!users.Items || users.Items.length === 0) {
+    console.error(`No user found for connectionId ${connectionId}`);
+    return { statusCode: 403, body: 'User not found' };
+  }
+  
+  // Get the user
+  const user = users.Items[0];
   
   // Add resource to user's inventory
   // (In a real implementation, you'd have a more sophisticated inventory system)
@@ -257,8 +319,11 @@ async function handleCollectResource(wss, db, user, payload) {
   // Delete the resource from the world
   await db.resources.delete({ id: resourceId });
   
+  // Get the WebSocket utilities
+  const wss = await arc.tables.websocket();
+  
   // Notify the user of successful collection
-  await wss.send(user.connectionId, JSON.stringify({
+  await wss.send(connectionId, JSON.stringify({
     type: 'RESOURCE_COLLECTED',
     resourceId,
     resourceType: resource.type

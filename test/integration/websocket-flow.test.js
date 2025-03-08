@@ -160,4 +160,28 @@ describe('WebSocket Flow', () => {
     
     expect(unknownTypeResponse.statusCode).toBe(400);
   });
+
+  it('should handle invalid messages gracefully', async () => {
+    // User connects
+    await connectHandler({ requestContext });
+    
+    // Send message with unknown type
+    const unknownTypeResponse = await defaultHandler({
+      requestContext,
+      body: JSON.stringify({
+        type: 'UNKNOWN_TYPE',
+        payload: {}
+      })
+    });
+    
+    expect(unknownTypeResponse.statusCode).toBe(400);
+    
+    // Send malformed JSON
+    const malformedResponse = await defaultHandler({
+      requestContext,
+      body: 'not json'
+    });
+    
+    expect(malformedResponse.statusCode).toBe(400);
+  });
 });
