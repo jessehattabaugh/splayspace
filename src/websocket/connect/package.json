@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@architect/functions": "^7.0.0",
+    "nanoid": "^5.0.1"
+  },
+  "name": "ws-connect"
+}

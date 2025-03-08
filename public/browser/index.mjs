@@ -4,8 +4,8 @@ import { setupInputHandlers } from './input-handlers.mjs';
 import { initUI } from './ui-controller.mjs';
 import { initArtEditor } from './art-editor.mjs';
 
-// State management
-let gameState = {
+// Main game state
+const gameState = {
   player: null,
   users: new Map(),
   world: new Map(),
@@ -16,29 +16,22 @@ let gameState = {
   }
 };
 
-// Initialize the game when the page loads
-window.addEventListener('DOMContentLoaded', async () => {
-  // Show the loading screen
-  const loadingScreen = document.getElementById('loading-screen');
-  const loadingMessage = document.getElementById('loading-message');
-  const loadingProgress = document.getElementById('loading-progress');
-  
-  // Update progress function
-  const updateProgress = (message, percent) => {
-    loadingMessage.innerText = message;
-    loadingProgress.style.width = `${percent}%`;
-  };
-  
-  // Initialize components in sequence
+// Initialize components and start game
+async function initializeGame() {
   try {
+    const { updateProgress, hideLoadingScreen } = setupLoadingUI();
+    
+    // Initialize components in sequence
     updateProgress('Connecting to server...', 10);
     const webSocket = await initWebSocket(gameState);
+    gameState.webSocket = webSocket;
     
     updateProgress('Setting up game engine...', 30);
-    const { render, update } = initGame(gameState);
+    const gameEngine = initGame(gameState);
+    gameState.getTerrainAt = gameEngine.getTerrainAt;
     
     updateProgress('Setting up controls...', 50);
-    setupInputHandlers(gameState, webSocket);
+    const inputHandlers = setupInputHandlers(gameState, webSocket);
     
     updateProgress('Initializing user interface...', 70);
     initUI(gameState, webSocket);
@@ -46,41 +39,75 @@ window.addEventListener('DOMContentLoaded', async () => {
     updateProgress('Setting up art editor...', 90);
     initArtEditor(gameState, webSocket);
     
-    // Start the game loop
     updateProgress('Ready to play!', 100);
     
-    // Animation loop
-    let lastTime = 0;
-    function gameLoop(timestamp) {
-      const deltaTime = timestamp - lastTime;
-      lastTime = timestamp;
-      
-      update(deltaTime);
-      render();
-      
-      requestAnimationFrame(gameLoop);
-    }
+    // Start the game loop
+    startGameLoop(gameEngine, inputHandlers);
     
-    // Hide loading screen and start game
-    setTimeout(() => {
-      loadingScreen.classList.add('hidden');
-      requestAnimationFrame(gameLoop);
-    }, 1000);
+    // Hide loading screen after a short delay
+    setTimeout(hideLoadingScreen, 1000);
+    
+    // Set up visibility change handler
+    handleVisibilityChanges();
     
   } catch (error) {
-    loadingMessage.innerText = `Error: ${error.message}. Please refresh the page.`;
-    console.error('Game initialization error:', error);
+    showError(error.message);
   }
-});
+}
 
-// Handle visibility change to conserve resources
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    // Game is inactive, can pause updates
-  } else {
-    // Game is active again, resume updates
+function setupLoadingUI() {
+  const loadingScreen = document.getElementById('loading-screen');
+  const loadingMessage = document.getElementById('loading-message');
+  const loadingProgress = document.getElementById('loading-progress');
+  
+  return {
+    updateProgress: (message, percent) => {
+      loadingMessage.innerText = message;
+      loadingProgress.style.width = `${percent}%`;
+    },
+    hideLoadingScreen: () => loadingScreen.classList.add('hidden')
+  };
+}
+
+function showError(message) {
+  const loadingMessage = document.getElementById('loading-message');
+  loadingMessage.innerText = `Error: ${message}. Please refresh the page.`;
+  console.error('Game initialization error:', message);
+}
+
+function startGameLoop(gameEngine, inputHandlers) {
+  let lastTime = 0;
+  
+  function gameLoop(timestamp) {
+    const deltaTime = timestamp - lastTime;
+    lastTime = timestamp;
+    
+    // Process user input
+    inputHandlers.processInput();
+    
+    // Update game state
+    gameEngine.update(deltaTime);
+    
+    // Render frame
+    gameEngine.render();
+    
+    // Continue loop
+    requestAnimationFrame(gameLoop);
   }
-});
+  
+  // Start the loop
+  requestAnimationFrame(gameLoop);
+}
+
+function handleVisibilityChanges() {
+  document.addEventListener('visibilitychange', () => {
+    // Pause/resume game processing based on visibility
+    gameState.active = !document.hidden;
+  });
+}
+
+// Start when DOM is ready
+window.addEventListener('DOMContentLoaded', initializeGame);
 
 // Export for testing
 export { gameState };

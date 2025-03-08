@@ -1,68 +1,47 @@
-const arc = require('@architect/functions');
 const { nanoid } = require('nanoid');
+const { createHandler } = require('../handler-factory');
 
 /**
  * Handle WebSocket connection
  */
-exports.handler = async function ws(event) {
-  const tables = await arc.tables();
+async function handleConnect(event, container) {
+  const { services: { userService }, logger } = container;
   const connectionId = event.requestContext.connectionId;
   
-  // Generate a default user
+  // Generate a userId and create the user
   const userId = nanoid();
-  const defaultUser = {
-    userId,
+  console.log('🌐 New WebSocket connection established 🔗 handleConnect', {
     connectionId,
-    position: { x: 0, y: 0 },
-    lastActive: Date.now(),
-    color: getRandomColor(),
-    inventory: []
-  };
-  
-  // Store user connection in DynamoDB
-  await tables.users.put(defaultUser);
-  
-  // Notify others about new user
-  await notifyUsers(tables, defaultUser, connectionId);
-  
-  return { statusCode: 200 };
-};
-
-// Helper to generate random color for user
-function getRandomColor() {
-  const colors = ['red', 'blue', 'green', 'purple', 'orange', 'yellow'];
-  return colors[Math.floor(Math.random() * colors.length)];
-}
-
-// Notify other users about a new connection
-async function notifyUsers(tables, user, excludeConnectionId) {
-  const websocket = await arc.tables.websocket();
-  
-  // Get all active connections
-  const result = await tables.users.scan({});
-  
-  if (!result.Items || result.Items.length === 0) return;
-  
-  // Send to each connection except the new one
-  const message = JSON.stringify({
-    type: 'USER_JOINED',
-    user: {
-      userId: user.userId,
-      position: user.position,
-      color: user.color
-    }
+    userId
   });
   
-  for (const item of result.Items) {
-    if (item.connectionId !== excludeConnectionId) {
-      try {
-        await websocket.send({
-          id: item.connectionId,
-          payload: message
-        });
-      } catch (err) {
-        console.log(`Error sending to ${item.connectionId}`, err);
-      }
-    }
+  logger.info('Creating new user', { userId, connectionId });
+  
+  try {
+    // Create new user
+    const user = await userService.createUser(connectionId, userId);
+    
+    // Notify existing users about the new user
+    await userService.notifyUserJoined(user);
+    
+    // Send existing users to the new user
+    await userService.sendExistingUsersTo(user);
+    
+    console.log('🌐 User onboarding completed ✅ handleConnect', {
+      userId,
+      connectionId
+    });
+    
+    return { statusCode: 200 };
+  } catch (err) {
+    console.log('🌐 Error handling connection ❌ handleConnect', {
+      connectionId,
+      error: err.message
+    });
+    logger.error('Error handling connection', err);
+    return { statusCode: 500 };
   }
 }
+
+// Export the wrapped handler
+exports.handler = createHandler(handleConnect);

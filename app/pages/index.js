@@ -1,4 +1,4 @@
-export default function Index() {
+export default function Index({ wsUrl }) {
   return `
     <!DOCTYPE html>
     <html lang="en">
@@ -9,6 +9,10 @@ export default function Index() {
         <link rel="stylesheet" href="/_public/styles.css">
         <link rel="icon" href="/_public/favicon.ico">
         <meta name="description" content="Explore an infinite world with friends in SplaySpace">
+        <script>
+          // Set WebSocket URL from server-side data
+          window.WS_URL = "${wsUrl}";
+        </script>
       </head>
       <body>
         <main>

@@ -7,24 +7,30 @@
     "start": "npx arc sandbox",
     "deploy": "npx arc deploy",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:report": "npx playwright show-report"
   },
   "keywords": ["game", "multiplayer", "infinite-world"],
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@architect/architect": "^10.13.1",
-    "@enhance/arc-plugin-enhance": "^6.2.1",
-    "@enhance/element": "^1.1.1",
-    "@enhance/types": "^0.6.0",
-    "uuid": "^9.0.1",
+    "@architect/functions": "^7.0.0",
+    "@architect/sandbox": "^5.9.0",
+    "@enhance/arc-plugin-enhance": "^8.0.0",
+    "@enhance/element": "^2.0.0",
+    "@enhance/types": "^0.6.1",
     "nanoid": "^5.0.1",
     "simplex-noise": "^4.0.1"
   },
   "devDependencies": {
+    "@architect/architect": "^10.16.0",
+    "@playwright/test": "^1.39.0",
     "vitest": "^0.34.6",
-    "@architect/sandbox": "^5.8.1",
-    "eslint": "^8.49.0",
+    "eslint": "^8.52.0",
     "prettier": "^3.0.3"
   }
 }

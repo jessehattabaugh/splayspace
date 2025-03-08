@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@architect/functions": "^7.0.0"
+  },
+  "name": "ws-disconnect"
+}

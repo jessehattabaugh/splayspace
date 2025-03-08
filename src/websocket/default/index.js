@@ -1,60 +1,162 @@
 const arc = require('@architect/functions');
 const { generateTerrain } = require('../../shared/terrain-generator');
+const { getUserByConnectionId, broadcastMessage, getRandomResourceType, distance } = require('../../shared/utils');
+const { createHandler } = require('../handler-factory');
+const MessageHandlers = require('./message-handlers');
+const RateLimiter = require('../../shared/RateLimiter');
+
+// Create rate limiters with different settings for different operations
+const messageLimiter = new RateLimiter({ maxRequests: 60, timeWindowMs: 60000 }); // 60 msgs per minute
+const moveLimiter = new RateLimiter({ maxRequests: 600, timeWindowMs: 60000 }); // 600 moves per minute
+const chunkLimiter = new RateLimiter({ maxRequests: 120, timeWindowMs: 60000 }); // 120 chunk requests per minute
 
 /**
- * Handle WebSocket messages
+ * Handle WebSocket messages with improved error handling and rate limiting
  */
-exports.handler = async function ws(event) {
-  const tables = await arc.tables();
+async function handleDefault(event, container) {
+  const { 
+    services: { userService, worldService, resourceService, chatService },
+    logger 
+  } = container;
+  
   const connectionId = event.requestContext.connectionId;
   
   try {
-    const message = JSON.parse(event.body);
+    // Parse message with error handling
+    let message;
+    try {
+      message = JSON.parse(event.body);
+    } catch (err) {
+      console.log('🌐 Invalid JSON received ⚠️ handleDefault', { connectionId });
+      logger.warn('Invalid JSON received', { connectionId });
+      return { statusCode: 400, body: 'Invalid JSON format' };
+    }
+    
     const { type, payload } = message;
     
+    console.debug('🌐 Received WebSocket message 📩 handleDefault', { 
+      type, 
+      connectionId,
+      payloadSize: payload ? JSON.stringify(payload).length : 0
+    });
+    
+    // Apply appropriate rate limiter based on message type
+    const limiter = 
+      type === 'MOVE' ? moveLimiter : 
+      type === 'GET_WORLD_CHUNK' ? chunkLimiter :
+      messageLimiter;
+      
+    // Check rate limit
+    if (!limiter.allowRequest(connectionId)) {
+      console.log('🌐 Rate limit exceeded 🚦 handleDefault', { connectionId, type });
+      logger.warn('Rate limit exceeded', { connectionId, type });
+      return { 
+        statusCode: 429, 
+        body: 'Too many requests. Please slow down.' 
+      };
+    }
+    
+    logger.info('Message received', { type, connectionId });
+    
     // Find user by connectionId
-    const user = await getUserByConnectionId(tables, connectionId);
+    const user = await userService.getUserByConnectionId(connectionId);
     
     if (!user) {
-      return { statusCode: 400, body: 'User not found' };
+      console.log('🌐 User not found for connection 🔍 handleDefault', { connectionId, type });
+      logger.warn('User not found for connection', { connectionId });
+      return { statusCode: 401, body: 'User not authenticated' };
     }
     
-    switch (type) {
-      case 'MOVE':
-        await handleMove(tables, user, payload);
-        break;
-      case 'GET_WORLD_CHUNK':
-        await handleGetWorldChunk(tables, user, payload);
-        break;
-      case 'CHAT_MESSAGE':
-        await handleChatMessage(tables, user, payload);
-        break;
-      case 'COLLECT_RESOURCE':
-        await handleCollectResource(tables, user, payload);
-        break;
-      case 'CREATE_ART':
-        await handleCreateArt(tables, user, payload);
-        break;
-      default:
-        console.log(`Unknown message type: ${type}`);
+    // Validate payload
+    if (!payload || typeof payload !== 'object') {
+      console.log('🌐 Invalid payload received 📤 handleDefault', { connectionId, type });
+      logger.warn('Invalid payload', { connectionId, type });
+      return { statusCode: 400, body: 'Invalid payload' };
     }
     
-    return { statusCode: 200 };
+    // Initialize message handlers with services
+    const handlers = new MessageHandlers({
+      userService,
+      worldService,
+      resourceService,
+      chatService,
+      logger
+    });
+    
+    // Get the appropriate handler for this message type
+    const handlerFn = handlers.getHandlerForType(type);
+    
+    if (!handlerFn) {
+      console.log('🌐 Unknown message type received ❓ handleDefault', { 
+        type, 
+        connectionId, 
+        userId: user.userId 
+      });
+      logger.warn('Unknown message type', { type, connectionId });
+      return { statusCode: 400, body: `Unknown message type: ${type}` };
+    }
+    
+    // Process the message with timing metric
+    const startTime = Date.now();
+    const result = await handlerFn(user, payload);
+    const processingTime = Date.now() - startTime;
+    
+    // Log processing time for performance monitoring
+    if (processingTime > 200) { // Log slow operations
+      console.log('🌐 Slow message processing detected ⏱️ handleDefault', { 
+        type, 
+        connectionId, 
+        userId: user.userId,
+        processingTimeMs: processingTime 
+      });
+      
+      logger.warn('Slow message processing', { 
+        type, 
+        connectionId, 
+        processingTimeMs: processingTime 
+      });
+    } else {
+      console.debug('🌐 Message processed successfully ✅ handleDefault', { 
+        type, 
+        connectionId,
+        processingTimeMs: processingTime 
+      });
+      
+      logger.debug('Message processed', { 
+        type, 
+        connectionId, 
+        processingTimeMs: processingTime 
+      });
+    }
+    
+    return { 
+      statusCode: 200,
+      body: result ? JSON.stringify(result) : ''
+    };
   } catch (err) {
-    console.log('Error processing message', err);
-    return { statusCode: 500 };
+    console.log('🌐 Error processing message ❌ handleDefault', {
+      connectionId,
+      error: err.message,
+      stack: err.stack
+    });
+    
+    logger.error('Error processing message', {
+      connectionId,
+      error: err.message,
+      stack: err.stack
+    });
+    
+    return { 
+      statusCode: 500,
+      body: 'Internal server error processing message'
+    };
   }
-};
-
-async function getUserByConnectionId(tables, connectionId) {
-  const result = await tables.users.scan({
-    FilterExpression: 'connectionId = :connectionId',
-    ExpressionAttributeValues: { ':connectionId': connectionId }
-  });
-  
-  return result.Items && result.Items.length > 0 ? result.Items[0] : null;
 }
 
+// Export the wrapped handler
+exports.handler = createHandler(handleDefault);
+
+// Message handlers with focused responsibilities
 async function handleMove(tables, user, { x, y }) {
   // Update user position
   await tables.users.update({
@@ -68,29 +170,13 @@ async function handleMove(tables, user, { x, y }) {
   });
   
   // Broadcast movement to other users
-  const websocket = await arc.tables.websocket();
-  const result = await tables.users.scan({});
-  
-  if (!result.Items) return;
-  
-  const message = JSON.stringify({
+  const moveMessage = JSON.stringify({
     type: 'USER_MOVED',
     userId: user.userId,
     position: { x, y }
   });
   
-  for (const item of result.Items) {
-    if (item.connectionId !== user.connectionId) {
-      try {
-        await websocket.send({
-          id: item.connectionId,
-          payload: message
-        });
-      } catch (err) {
-        console.log(`Error sending to ${item.connectionId}`, err);
-      }
-    }
-  }
+  await broadcastMessage(tables, moveMessage, [user.connectionId]);
 }
 
 async function handleGetWorldChunk(tables, user, { chunkX, chunkY }) {
@@ -111,9 +197,8 @@ async function handleGetWorldChunk(tables, user, { chunkX, chunkY }) {
     await tables.worlds.put(chunk);
   }
   
-  const websocket = await arc.tables.websocket();
-  
   // Send chunk data to requesting user
+  const websocket = await arc.tables.websocket();
   try {
     await websocket.send({
       id: user.connectionId,
@@ -130,11 +215,6 @@ async function handleGetWorldChunk(tables, user, { chunkX, chunkY }) {
 }
 
 async function handleChatMessage(tables, user, { message }) {
-  const websocket = await arc.tables.websocket();
-  const result = await tables.users.scan({});
-  
-  if (!result.Items) return;
-  
   const chatMessage = JSON.stringify({
     type: 'CHAT_MESSAGE',
     userId: user.userId,
@@ -142,17 +222,8 @@ async function handleChatMessage(tables, user, { message }) {
     timestamp: Date.now()
   });
   
-  // Send message to all connected users
-  for (const item of result.Items) {
-    try {
-      await websocket.send({
-        id: item.connectionId,
-        payload: chatMessage
-      });
-    } catch (err) {
-      console.log(`Error sending to ${item.connectionId}`, err);
-    }
-  }
+  // Send message to all users including sender
+  await broadcastMessage(tables, chatMessage);
 }
 
 async function handleCollectResource(tables, user, { resourceId }) {
@@ -164,8 +235,9 @@ async function handleCollectResource(tables, user, { resourceId }) {
   // Add to user inventory
   await tables.users.update({
     Key: { userId: user.userId },
-    UpdateExpression: 'set inventory = list_append(inventory, :resource)',
+    UpdateExpression: 'set inventory = list_append(if_not_exists(inventory, :empty_list), :resource)',
     ExpressionAttributeValues: {
+      ':empty_list': [],
       ':resource': [resource]
     }
   });
@@ -175,7 +247,6 @@ async function handleCollectResource(tables, user, { resourceId }) {
   
   // Notify user of successful collection
   const websocket = await arc.tables.websocket();
-  
   try {
     await websocket.send({
       id: user.connectionId,
@@ -194,22 +265,19 @@ async function handleCreateArt(tables, user, { art, position }) {
   // Save the art as a special type of resource
   const resourceId = `art:${user.userId}:${Date.now()}`;
   
-  await tables.resources.put({
+  const artResource = {
     resourceId,
     type: 'art',
     creator: user.userId,
     position,
     data: art,
     createdAt: Date.now()
-  });
+  };
   
-  // Notify nearby users about the new art
-  const websocket = await arc.tables.websocket();
-  const result = await tables.users.scan({});
+  await tables.resources.put(artResource);
   
-  if (!result.Items) return;
-  
-  const message = JSON.stringify({
+  // Notify nearby users about the new art (within 100 units)
+  const nearbyUserMessage = JSON.stringify({
     type: 'NEW_ART_CREATED',
     resourceId,
     creator: user.userId,
@@ -217,22 +285,23 @@ async function handleCreateArt(tables, user, { art, position }) {
     data: art
   });
   
-  for (const item of result.Items) {
-    // Calculate if user is nearby to see the art (simple distance check)
-    const userPos = item.position || { x: 0, y: 0 };
-    const distance = Math.sqrt(
-      Math.pow(userPos.x - position.x, 2) + 
-      Math.pow(userPos.y - position.y, 2)
-    );
-    
-    if (distance < 100) { // visible within 100 units
+  // Get all users
+  const result = await tables.users.scan({});
+  if (!result.Items) return;
+  
+  // Find nearby users
+  const websocket = await arc.tables.websocket();
+  const visibilityRange = 100; // Units
+  
+  for (const nearbyUser of result.Items) {
+    if (distance(nearbyUser.position, position) < visibilityRange) {
       try {
         await websocket.send({
-          id: item.connectionId,
-          payload: message
+          id: nearbyUser.connectionId,
+          payload: nearbyUserMessage
         });
       } catch (err) {
-        console.log(`Error sending to ${item.connectionId}`, err);
+        console.log(`Error sending to ${nearbyUser.connectionId}`, err);
       }
     }
   }
@@ -260,9 +329,4 @@ function generateResourcesForChunk(chunkX, chunkY) {
   }
   
   return resources;
-}
-
-function getRandomResourceType() {
-  const types = ['stone', 'wood', 'metal', 'crystal', 'fabric'];
-  return types[Math.floor(Math.random() * types.length)];
 }

@@ -1,7 +1,13 @@
 // WebSocket connection handling
 
-// Calculate the WebSocket URL based on the current page
+// Use server-provided WebSocket URL or fall back to auto-detection
 function getWebSocketUrl() {
+  // Use the URL provided by the server if available
+  if (window.WS_URL) {
+    return window.WS_URL;
+  }
+  
+  // Otherwise auto-detect based on current location
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const host = window.location.host;
   return `${protocol}//${host}`;
